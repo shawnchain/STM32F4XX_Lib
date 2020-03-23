@@ -756,7 +756,121 @@ static void SetSysClock(void)
   { /* If HSE fails to start-up, the application will have wrong clock
          configuration. User can add here some code to deal with this error */
   }
-#elif defined(STM32F410xx) || defined(STM32F411xE)
+#elif defined(STM32F411xE)
+/******************************************************************************/
+/*  STM32F411 -   PLL (clocked by HSE) used as System clock source            */
+/******************************************************************************/
+  __IO uint32_t StartUpCounter = 0, HSEStatus = 0;
+  
+  /* Enable HSE */
+  RCC->CR |= ((uint32_t)RCC_CR_HSEON);
+ 
+  /* Wait till HSE is ready and if Time out is reached exit */
+  do
+  {
+    HSEStatus = RCC->CR & RCC_CR_HSERDY;
+    StartUpCounter++;
+  } while((HSEStatus == 0) && (StartUpCounter != HSE_STARTUP_TIMEOUT));
+
+  if ((RCC->CR & RCC_CR_HSERDY) != RESET)
+  {
+    HSEStatus = (uint32_t)0x01;
+  }
+  else
+  {
+    HSEStatus = (uint32_t)0x00;
+  }
+
+  if (HSEStatus == (uint32_t)0x01)
+  {
+    /* Select regulator voltage output Scale 1 mode */
+    RCC->APB1ENR |= RCC_APB1ENR_PWREN;
+    PWR->CR |= PWR_CR_VOS;
+
+    /* HCLK = SYSCLK / 1*/
+    RCC->CFGR |= RCC_CFGR_HPRE_DIV1;
+
+    /* PCLK2 = HCLK / 1*/
+    RCC->CFGR |= RCC_CFGR_PPRE2_DIV1;
+    
+    /* PCLK1 = HCLK / 2*/
+    RCC->CFGR |= RCC_CFGR_PPRE1_DIV2;
+
+  #undef PLL_M
+  #undef PLL_N
+  #undef PLL_P
+  #undef PLL_Q
+
+#if defined(OVERCLOCK) && OVERCLOCK == 2
+  #define PLL_M 25
+  #define PLL_N 288
+  #define PLL_P 2
+  #define PLL_Q 6
+  SystemCoreClock = 144000000; 
+
+#elif defined(OVERCLOCK) && OVERCLOCK == 1
+  #define PLL_M 25
+  #define PLL_N 240
+  #define PLL_P 2
+  #define PLL_Q 5  /* USB 48MHz */
+  #define PLL_R 5  /* I2S 48MHz */
+  SystemCoreClock = 120000000;
+
+#else
+  #if 1
+  #define PLL_M 25
+  #define PLL_N 192
+  #define PLL_P 2
+  #define PLL_Q 4   /* USB 48MHz */
+  #define PLL_R 4   /* I2S 48MHz */
+  SystemCoreClock = 96000000;
+  #else
+  #define PLL_M 25
+  #define PLL_N 200
+  #define PLL_P 2
+  #define PLL_Q 4   /* USB is broken! */
+  SystemCoreClock = 100000000;
+  #endif
+#endif
+
+#if 1
+    /* Configure the main PLL w/o PLL_R */
+    RCC->PLLCFGR = PLL_M | (PLL_N << 6) | (((PLL_P >> 1) -1) << 16) |
+                   (RCC_PLLCFGR_PLLSRC_HSE) | (PLL_Q << 24);
+#else
+    /* Configure the main PLL with PLL_R */
+    RCC->PLLCFGR = PLL_M | (PLL_N << 6) | (((PLL_P >> 1) -1) << 16) |
+                   (RCC_PLLCFGR_PLLSRC_HSE) | (PLL_Q << 24) | (PLL_R << 28);
+#endif
+    
+    /* Enable the main PLL */
+    RCC->CR |= RCC_CR_PLLON;
+
+    /* Wait till the main PLL is ready */
+    while((RCC->CR & RCC_CR_PLLRDY) == 0)
+    {
+    }
+
+
+    /* Configure Flash prefetch, Instruction cache, Data cache and wait state */
+    // FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_ICEN |FLASH_ACR_DCEN |FLASH_ACR_LATENCY_5WS;
+    FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_ICEN |FLASH_ACR_DCEN |FLASH_ACR_LATENCY_3WS;
+    // FLASH->ACR = FLASH_ACR_PRFTEN | FLASH_ACR_ICEN |FLASH_ACR_DCEN |FLASH_ACR_LATENCY_2WS;
+
+    /* Select the main PLL as system clock source */
+    RCC->CFGR &= (uint32_t)((uint32_t)~(RCC_CFGR_SW));
+    RCC->CFGR |= RCC_CFGR_SW_PLL;
+
+    /* Wait till the main PLL is used as system clock source */
+    while ((RCC->CFGR & (uint32_t)RCC_CFGR_SWS ) != RCC_CFGR_SWS_PLL)
+    {
+    }
+  }
+  else
+  { /* If HSE fails to start-up, the application will have wrong clock
+         configuration. User can add here some code to deal with this error */
+  }
+#elif defined(STM32F410xx)
 #if defined(USE_HSE_BYPASS) 
 /******************************************************************************/
 /*            PLL (clocked by HSE) used as System clock source                */
