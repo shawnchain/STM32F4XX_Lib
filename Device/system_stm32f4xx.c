@@ -802,14 +802,14 @@ static void SetSysClock(void)
   #undef PLL_Q
 
 #if defined(OVERCLOCK) && OVERCLOCK == 2
-  #define PLL_M 25
+  #define PLL_M (HSE_VALUE / 1000000)
   #define PLL_N 288
   #define PLL_P 2
   #define PLL_Q 6
   SystemCoreClock = 144000000; 
 
 #elif defined(OVERCLOCK) && OVERCLOCK == 1
-  #define PLL_M 25
+  #define PLL_M (HSE_VALUE / 1000000)
   #define PLL_N 240
   #define PLL_P 2
   #define PLL_Q 5  /* USB 48MHz */
@@ -818,14 +818,14 @@ static void SetSysClock(void)
 
 #else
   #if 1
-  #define PLL_M 25
+  #define PLL_M (HSE_VALUE / 1000000)
   #define PLL_N 192
   #define PLL_P 2
   #define PLL_Q 4   /* USB 48MHz */
   #define PLL_R 4   /* I2S 48MHz */
   SystemCoreClock = 96000000;
   #else
-  #define PLL_M 25
+  #define PLL_M (HSE_VALUE / 1000000)
   #define PLL_N 200
   #define PLL_P 2
   #define PLL_Q 4   /* USB is broken! */
